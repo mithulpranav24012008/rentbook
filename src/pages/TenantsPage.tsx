@@ -44,7 +44,7 @@ export function TenantsPage({ store }: { store: Store }) {
       <div className="page-head">
         <h1>Tenants</h1>
         <button className="btn primary" onClick={() => setEditing('new')}>
-          + Add tenant
+          Add a tenant
         </button>
       </div>
 
@@ -52,8 +52,8 @@ export function TenantsPage({ store }: { store: Store }) {
         <input
           className="search"
           type="search"
-          placeholder="Search name, phone or house"
-          aria-label="Search tenants"
+          placeholder="Find a tenant by name, phone or house"
+          aria-label="Find a tenant"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -62,25 +62,24 @@ export function TenantsPage({ store }: { store: Store }) {
       {store.tenants.length === 0 ? (
         <Empty title="No tenants yet">
           <p>Add each tenant with their house, Aadhaar, rent, advance and dates.</p>
+          <button className="btn primary big" onClick={() => setEditing('new')}>
+            Add a tenant
+          </button>
         </Empty>
       ) : list.length === 0 ? (
         <Empty title="No matches" />
       ) : (
-        <ul className="list">
+        <ul className="people">
           {list.map((t) => (
             <li key={t.id}>
-              <button className="card-row" onClick={() => setEditing(t)}>
-                <span className="avatar" aria-hidden="true">
-                  {t.name.slice(0, 1).toUpperCase()}
+              <button className="person" onClick={() => setEditing(t)}>
+                <span className="name">
+                  {t.name} {!isCurrent(t) && <span className="pill">Left {dateLabel(t.move_out_date)}</span>}
                 </span>
-                <span className="card-main">
-                  <span className="rent-name">
-                    {t.name} {!isCurrent(t) && <span className="tag">Left {dateLabel(t.move_out_date)}</span>}
-                  </span>
-                  <span className="muted small">{houseName(store, t.unit_id)}</span>
-                  {t.phone && <span className="muted small">{t.phone}</span>}
-                </span>
-                <span className="card-amount">{formatMoney(t.rent_amount)}</span>
+                <span className="amount">{formatMoney(t.rent_amount)}</span>
+                <span className="sub">{houseName(store, t.unit_id)}</span>
+                {t.phone && <span className="sub num">{t.phone}</span>}
+                <span className="go">Open ›</span>
               </button>
             </li>
           ))}
@@ -88,7 +87,7 @@ export function TenantsPage({ store }: { store: Store }) {
       )}
 
       {pastCount > 0 && (
-        <label className="toggle">
+        <label className="check-line">
           <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} />
           Show {pastCount} tenant{pastCount === 1 ? '' : 's'} who left
         </label>
@@ -228,9 +227,9 @@ function TenantSheet({
       }
     >
       {tenant?.phone && (
-        <div className="quick-actions">
+        <div className="quick" style={{ marginBottom: '1.5rem' }}>
           <a className="btn" href={`tel:${tenant.phone}`}>
-            Call
+            Call {tenant.name.split(' ')[0]}
           </a>
           <a className="btn" href={whatsappLink(tenant.phone, `Hi ${tenant.name}, `)} target={linkTarget} rel="noreferrer">
             WhatsApp
@@ -258,7 +257,7 @@ function TenantSheet({
           </select>
         </Field>
         {store.units.length === 0 && (
-          <p className="muted small wide">First add the apartment and its houses in the Apartments tab.</p>
+          <p className="label wide">First add the apartment and its houses on the Apartments screen.</p>
         )}
         {unit && building && (
           <>
@@ -345,16 +344,16 @@ function TenantSheet({
         <>
           <h3 className="section-title">Rent paid dates</h3>
           {history === null ? (
-            <p className="muted small">Loading…</p>
+            <p className="label">Loading…</p>
           ) : history.length === 0 ? (
-            <p className="muted small">No payments recorded yet. Tick the tenant on the Rent tab when they pay.</p>
+            <p className="label">No payments yet. Press “Mark as paid” on the Rent screen when they pay.</p>
           ) : (
             <ul className="history">
               {history.map((p) => (
                 <li key={p.id}>
                   <span>{monthLabel(p.month)}</span>
-                  <span className="muted small">
-                    Paid {dateLabel(p.paid_on)}
+                  <span className="when">
+                    Paid on {dateLabel(p.paid_on)}
                     {p.method ? ` · ${p.method}` : ''}
                   </span>
                   <strong>{formatMoney(p.amount)}</strong>
@@ -369,16 +368,21 @@ function TenantSheet({
   )
 }
 
-function PhoneFact({ label, phone }: { label: string; phone: string | null }) {
+export function PhoneFact({ label, phone }: { label: string; phone: string | null }) {
   return phone ? (
     <a className="contact" href={`tel:${phone}`}>
-      <span className="muted small">{label}</span>
-      {phone}
+      <span className="who">
+        <span>{label}</span>
+        <span>{phone}</span>
+      </span>
+      <span className="call">Call</span>
     </a>
   ) : (
-    <span className="contact empty-contact">
-      <span className="muted small">{label}</span>
-      <span className="muted small">Add in Apartments</span>
+    <span className="contact empty">
+      <span className="who">
+        <span>{label}</span>
+        <span className="label">Not added yet</span>
+      </span>
     </span>
   )
 }

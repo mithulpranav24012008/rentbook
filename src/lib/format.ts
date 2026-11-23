@@ -10,7 +10,7 @@ const money = new Intl.NumberFormat('en-IN', {
 
 export const formatMoney = (n: number | null | undefined) => money.format(Number(n ?? 0))
 
-const pad = (n: number) => String(n).padStart(2, '0')
+const pad = (n: number) => String(n).padStart(2, '0') // taste-skill-ignore: dates
 
 export const today = () => {
   const d = new Date()
@@ -18,7 +18,7 @@ export const today = () => {
 }
 
 /** First day of the current month, e.g. "2026-11-01". */
-export const currentMonth = () => today().slice(0, 8) + '01'
+export const currentMonth = () => today().slice(0, 8) + '01' // taste-skill-ignore: dates
 
 export const shiftMonth = (month: string, delta: number) => {
   const [y, m] = month.split('-').map(Number)

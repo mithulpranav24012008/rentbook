@@ -33,3 +33,6 @@ android/
 *.keystore
 .vercel
 .env*
+
+# design tool output
+.taste-skill/

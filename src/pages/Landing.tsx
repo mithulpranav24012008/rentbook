@@ -1,94 +1,187 @@
+import { useEffect, useRef } from 'react'
+import { BuildingView } from '../components/BuildingView'
+import type { BuildingWindows, WindowState } from '../lib/rent'
+import { columnsFor } from '../lib/rent'
+
 const APK_URL =
   (import.meta.env.VITE_APK_URL as string | undefined) ||
   'https://github.com/mithulpranav24012008/rentbook/releases/download/latest-apk/RentBook.apk'
 
+// An example block for the first screen: six houses, four paid, one not paid, one empty.
+const exampleStates: WindowState[] = ['paid', 'paid', 'due', 'paid', 'vacant', 'paid']
+const example: BuildingWindows[] = [
+  {
+    building: { id: 'example', name: 'Example apartment', address: null, electrician_phone: null, eb_lineman_phone: null, notes: null },
+    windows: exampleStates.map((state, i) => ({
+      state,
+      unit: { id: `ex${i}`, building_id: 'example', label: String(i + 1), unit_type: null, floor: null, eb_number: null, key_number: null, rent_amount: null, deposit: null, notes: null },
+    })),
+    columns: columnsFor(6),
+    floors: 3,
+  },
+]
+
+const keeps = [
+  {
+    title: 'Each tenant’s details',
+    text: 'Name and phone, Aadhaar number and address, rent and advance, the date they came and the date they left. Every rent paid date is kept with them.',
+    img: '/images/apartment-balconies.jpg',
+    alt: 'Rows of balconies on an apartment block in Chennai, in black and white',
+  },
+  {
+    title: 'Every house and its key',
+    text: 'Each house number in each apartment, with its EB bill number and its house key number, and who lives there now.',
+    img: '/images/house-key.jpg',
+    alt: 'A brass house key',
+  },
+  {
+    title: 'Help in one tap',
+    text: 'Save the electrician’s and the EB line man’s numbers once, then call them with one press. Send a polite rent reminder on WhatsApp.',
+    img: '/images/eb-meters.jpg',
+    alt: 'A board of electricity meters, each marked with its house and service number',
+  },
+]
+
+/** Parts of each section rise into place as it scrolls into view; nothing moves with reduced motion. */
+function useReveal() {
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = root.current
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return
+    const items = [...el.querySelectorAll<HTMLElement>('[data-reveal]')]
+    items.forEach((item) => {
+      const group = item.closest('[data-reveal-group]')
+      const index = group ? [...group.querySelectorAll('[data-reveal]')].indexOf(item) : 0
+      item.style.transitionDelay = `${index * 80}ms`
+      item.classList.add('pre-reveal')
+    })
+    const io = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.remove('pre-reveal')
+            io.unobserve(e.target)
+          }
+        }),
+      { rootMargin: '0px 0px -10% 0px' },
+    )
+    items.forEach((i) => io.observe(i))
+    return () => io.disconnect()
+  }, [])
+  return root
+}
+
 export function Landing({ onOpenApp }: { onOpenApp: () => void }) {
+  const root = useReveal()
   return (
-    <div className="landing">
+    <div className="landing" ref={root}>
       <header className="landing-nav">
-        <div className="brand">
+        <a className="brand" href="/">
           <span className="brand-mark" aria-hidden="true">
             ₹
           </span>
           RentBook
-        </div>
+        </a>
         <button className="btn" onClick={onOpenApp}>
           Sign in
         </button>
       </header>
 
-      <main className="landing-main">
-        <section className="hero">
-          <h1>Know who has paid rent this month. At a glance.</h1>
-          <p className="lead">
-            RentBook keeps your tenants’ details, your buildings and flats, and a monthly rent checklist in one place.
-            Every landlord gets a private account.
-          </p>
-          <div className="hero-actions">
-            <a className="btn primary big" href={APK_URL} download>
-              Download APK
-            </a>
-            <button className="btn big" onClick={onOpenApp}>
-              Use it in the browser
-            </button>
-          </div>
-          <p className="muted small">Android 7.0 or newer. Same account works on the phone app and the website.</p>
-        </section>
-
-        <section className="preview" aria-label="Example rent checklist">
-          <div className="preview-card">
-            <p className="summary-label">November 2026</p>
-            <p className="preview-total">
-              <strong>₹48,500</strong> <span className="muted">of ₹62,000</span>
+      <main>
+        <section className="hero" data-reveal-group>
+          <div className="hero-copy">
+            <h1 data-reveal>Who has paid rent this month?</h1>
+            <p className="lead" data-reveal>
+              RentBook is a simple rent register for landlords. Every house is a window, and it lights up when the rent is
+              paid.
             </p>
-            <div className="progress">
-              <div style={{ width: '78%' }} />
+            <div className="hero-actions" data-reveal>
+              <a className="btn primary big" href={APK_URL} download>
+                Download the Android app
+              </a>
+              <button className="btn big" onClick={onOpenApp}>
+                Open in the browser
+              </button>
             </div>
-            <ul className="preview-list">
-              <li className="paid">
-                <span className="check">✓</span>Ravi Kumar <span className="muted">House 1A</span>
-              </li>
-              <li className="paid">
-                <span className="check">✓</span>Priya S. <span className="muted">House 2B</span>
-              </li>
+            <p className="label" data-reveal>
+              Free. For Android 7 or newer. Your records stay private to your account.
+            </p>
+          </div>
+          <div className="hero-figure" data-reveal>
+            <BuildingView
+              data={example}
+              lightUp
+              label="An example apartment with six houses: four paid, one not paid, one empty."
+            />
+          </div>
+        </section>
+
+        <figure className="photo-band" data-reveal-group>
+          <img
+            data-reveal
+            src="/images/chennai-rooftops-mylapore.jpg"
+            alt="Rooftops and water tanks of houses in Mylapore, Chennai"
+            width={1600}
+            height={1067}
+          />
+          <figcaption>Mylapore, Chennai</figcaption>
+        </figure>
+
+        <section className="band" aria-labelledby="keeps">
+          <div className="band-head" data-reveal-group>
+            <h2 id="keeps" data-reveal>
+              What it keeps for you
+            </h2>
+            <p className="lead" data-reveal>
+              The rent register comes first: press “Mark as paid” when the rent comes in, and see at once who still has to
+              pay. Around it, RentBook keeps everything else you used to write in the notebook.
+            </p>
+          </div>
+          <div className="keeps">
+            {keeps.map((k) => (
+              <article className="keep" key={k.title} data-reveal-group>
+                <img data-reveal src={k.img} alt={k.alt} loading="lazy" width={1200} height={800} />
+                <div>
+                  <h3 data-reveal>{k.title}</h3>
+                  <p data-reveal>{k.text}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="band install" aria-labelledby="install" data-reveal-group>
+          <h2 id="install" data-reveal>
+            Putting it on your phone
+          </h2>
+          <div>
+            <ol className="steps" data-reveal>
               <li>
-                <span className="check" />
-                Arjun M. <span className="muted">Shop 1</span>
+                On your Android phone, press <strong>Download the Android app</strong>.
               </li>
-            </ul>
+              <li>Open the downloaded file. If the phone asks, allow your browser to install apps.</li>
+              <li>Open RentBook and create your account with your email.</li>
+            </ol>
+            <a className="btn primary big" href={APK_URL} download data-reveal>
+              Download the Android app
+            </a>
           </div>
-        </section>
-
-        <section className="features">
-          <div>
-            <h2>Rent checklist</h2>
-            <p>Tick tenants off as they pay. See what’s collected and who’s still due, month by month.</p>
-          </div>
-          <div>
-            <h2>Tenant records</h2>
-            <p>Aadhaar and address, rent, advance, occupying and leaving dates, and every rent paid date.</p>
-          </div>
-          <div>
-            <h2>Apartments and houses</h2>
-            <p>House numbers, EB bill and key numbers, and your electrician and EB line man on one tap.</p>
-          </div>
-          <div>
-            <h2>WhatsApp reminders</h2>
-            <p>One tap sends a polite rent reminder to anyone who hasn’t paid yet.</p>
-          </div>
-        </section>
-
-        <section className="install">
-          <h2>Installing the APK</h2>
-          <ol>
-            <li>Tap <strong>Download APK</strong> on your Android phone.</li>
-            <li>Open the downloaded file. If asked, allow your browser to “install unknown apps”.</li>
-            <li>Open RentBook and sign in, or create an account.</li>
-          </ol>
         </section>
       </main>
 
-      <footer className="landing-foot muted small">RentBook · Your data is private to your account.</footer>
+      <footer className="landing-foot">
+        <span className="brand">RentBook</span>
+        <p className="label">A rent register for landlords. Your data is private to your account.</p>
+        <p className="credits">
+          Pictures: <a href="https://www.flickr.com/photos/44345361@N06/8208181080">“Patterns Of Mylapore”</a> and{' '}
+          <a href="https://www.flickr.com/photos/44345361@N06/4268053363">“Pattern”</a> by VinothChandar,{' '}
+          <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>, via Flickr;{' '}
+          <a href="https://commons.wikimedia.org/w/index.php?curid=29077337">“Electricity meters in India”</a> by Balaji
+          Kasirajan, <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a>, via Wikimedia Commons;{' '}
+          <a href="https://commons.wikimedia.org/w/index.php?curid=691559">“House key”</a>,{' '}
+          <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a>, via Wikimedia Commons.
+        </p>
+      </footer>
     </div>
   )
 }

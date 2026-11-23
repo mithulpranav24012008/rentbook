@@ -8,7 +8,7 @@ import { AuthPage, NewPasswordPage } from './pages/AuthPage'
 import { RentPage } from './pages/RentPage'
 import { TenantsPage } from './pages/TenantsPage'
 import { BuildingsPage } from './pages/BuildingsPage'
-import { ErrorNote } from './components/ui'
+import { ErrorNote, Icon } from './components/ui'
 
 export default function App() {
   const [path, setPath] = useState(() => {
@@ -93,21 +93,21 @@ function Main({ email }: { email: string }) {
           </span>
           RentBook
         </div>
-        <nav className="tabs-top" aria-label="Sections">
+        <nav className="nav nav-top" aria-label="Sections">
           <TabButtons tab={tab} setTab={setTab} />
         </nav>
         <button
-          className="link small"
+          className="btn"
           title={email}
           onClick={() => {
-            if (confirm('Sign out?')) void supabase.auth.signOut()
+            if (confirm('Sign out of RentBook?')) void supabase.auth.signOut()
           }}
         >
           Sign out
         </button>
       </header>
 
-      <div className="content">
+      <main className="content">
         <ErrorNote message={store.error} />
         {store.loading ? (
           <div className="loading">Loading your data…</div>
@@ -118,9 +118,9 @@ function Main({ email }: { email: string }) {
         ) : (
           <BuildingsPage store={store} />
         )}
-      </div>
+      </main>
 
-      <nav className="tabs-bottom" aria-label="Sections">
+      <nav className="nav nav-bottom" aria-label="Sections">
         <TabButtons tab={tab} setTab={setTab} />
       </nav>
     </div>
@@ -128,18 +128,16 @@ function Main({ email }: { email: string }) {
 }
 
 function TabButtons({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
-  const items: { id: Tab; label: string; icon: string }[] = [
-    { id: 'rent', label: 'Rent', icon: '✓' },
-    { id: 'tenants', label: 'Tenants', icon: '☺' },
-    { id: 'buildings', label: 'Apartments', icon: '⌂' },
+  const items: { id: Tab; label: string; icon: 'rent' | 'tenants' | 'apartments' }[] = [
+    { id: 'rent', label: 'Rent', icon: 'rent' },
+    { id: 'tenants', label: 'Tenants', icon: 'tenants' },
+    { id: 'buildings', label: 'Apartments', icon: 'apartments' },
   ]
   return (
     <>
       {items.map((i) => (
         <button key={i.id} className={tab === i.id ? 'on' : ''} aria-current={tab === i.id ? 'page' : undefined} onClick={() => setTab(i.id)}>
-          <span className="tab-icon" aria-hidden="true">
-            {i.icon}
-          </span>
+          <Icon name={i.icon} />
           {i.label}
         </button>
       ))}

@@ -3,6 +3,7 @@ import type { Building, Unit } from '../lib/types'
 import { deleteRow, saveRow, type Store } from '../lib/data'
 import { formatMoney, isCurrent, numOrNull, strOrNull } from '../lib/format'
 import { Empty, ErrorNote, Field, Sheet } from '../components/ui'
+import { PhoneFact } from './TenantsPage'
 
 export function BuildingsPage({ store }: { store: Store }) {
   const [editBuilding, setEditBuilding] = useState<Building | 'new' | null>(null)
@@ -20,13 +21,16 @@ export function BuildingsPage({ store }: { store: Store }) {
       <div className="page-head">
         <h1>Apartments</h1>
         <button className="btn primary" onClick={() => setEditBuilding('new')}>
-          + Add apartment
+          Add an apartment
         </button>
       </div>
 
       {store.buildings.length === 0 ? (
         <Empty title="No apartments yet">
           <p>Add each apartment you rent out, then the houses inside it.</p>
+          <button className="btn primary big" onClick={() => setEditBuilding('new')}>
+            Add an apartment
+          </button>
         </Empty>
       ) : (
         <div className="stack">
@@ -34,12 +38,12 @@ export function BuildingsPage({ store }: { store: Store }) {
             const units = store.units.filter((u) => u.building_id === b.id)
             const occupied = units.filter((u) => occupants(u.id).length > 0).length
             return (
-              <article key={b.id} className="building">
-                <header className="building-head">
+              <article key={b.id} className="apartment">
+                <header className="apartment-head">
                   <div>
                     <h2>{b.name}</h2>
-                    {b.address && <p className="muted small">{b.address}</p>}
-                    <p className="small">
+                    {b.address && <p className="label">{b.address}</p>}
+                    <p>
                       {units.length} house{units.length === 1 ? '' : 's'} · {occupied} occupied · {units.length - occupied} vacant
                     </p>
                   </div>
@@ -48,24 +52,12 @@ export function BuildingsPage({ store }: { store: Store }) {
                   </button>
                 </header>
 
-                {(b.electrician_phone || b.eb_lineman_phone) && (
-                  <div className="contacts">
-                    {b.electrician_phone && (
-                      <a className="contact" href={`tel:${b.electrician_phone}`}>
-                        <span className="muted small">Electrician</span>
-                        {b.electrician_phone}
-                      </a>
-                    )}
-                    {b.eb_lineman_phone && (
-                      <a className="contact" href={`tel:${b.eb_lineman_phone}`}>
-                        <span className="muted small">EB line man</span>
-                        {b.eb_lineman_phone}
-                      </a>
-                    )}
-                  </div>
-                )}
+                <div className="contacts">
+                  <PhoneFact label="Electrician" phone={b.electrician_phone} />
+                  <PhoneFact label="EB line man" phone={b.eb_lineman_phone} />
+                </div>
 
-                <ul className="units">
+                <ul className="houses">
                   {units.map((u) => {
                     const people = occupants(u.id)
                     const extra = [u.unit_type, u.eb_number && `EB ${u.eb_number}`, u.key_number && `Key ${u.key_number}`]
@@ -73,22 +65,18 @@ export function BuildingsPage({ store }: { store: Store }) {
                       .join(' · ')
                     return (
                       <li key={u.id}>
-                        <button className="unit-row" onClick={() => setEditUnit({ unit: u, buildingId: b.id })}>
-                          <span className="card-main">
-                            <span className="rent-name">House {u.label}</span>
-                            {extra && <span className="muted small">{extra}</span>}
-                            <span className={people.length ? 'small' : 'small muted'}>
-                              {people.length ? people.map((p) => p.name).join(', ') : 'Vacant'}
-                            </span>
-                          </span>
-                          {u.rent_amount != null && <span className="card-amount">{formatMoney(u.rent_amount)}</span>}
+                        <button className="house" onClick={() => setEditUnit({ unit: u, buildingId: b.id })}>
+                          <span className="name">House {u.label}</span>
+                          {u.rent_amount != null && <span className="amount">{formatMoney(u.rent_amount)}</span>}
+                          <span className="sub">{people.length ? people.map((p) => p.name).join(', ') : 'Empty'}</span>
+                          {extra && <span className="sub">{extra}</span>}
                         </button>
                       </li>
                     )
                   })}
                 </ul>
-                <button className="link" onClick={() => setEditUnit({ buildingId: b.id })}>
-                  + Add house
+                <button className="btn" onClick={() => setEditUnit({ buildingId: b.id })}>
+                  Add a house
                 </button>
               </article>
             )

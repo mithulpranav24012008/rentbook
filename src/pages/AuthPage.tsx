@@ -48,7 +48,7 @@ export function AuthPage() {
           RentBook
         </div>
         <h1>{titles[mode]}</h1>
-        <p className="muted">Your tenants, buildings and rent records stay private to your account.</p>
+        <p className="lead">Your tenants, houses and rent records stay private to your account.</p>
         <form onSubmit={submit} className="stack">
           <Field label="Email">
             <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -67,24 +67,24 @@ export function AuthPage() {
           )}
           <ErrorNote message={error} />
           {info && <p className="info">{info}</p>}
-          <button className="btn primary" disabled={busy}>
+          <button className="btn primary big" disabled={busy}>
             {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
           </button>
         </form>
         <div className="auth-links">
           {mode !== 'signin' && (
-            <button className="link" onClick={() => setMode('signin')}>
-              Have an account? Sign in
+            <button className="textbtn" onClick={() => setMode('signin')}>
+              I already have an account
             </button>
           )}
           {mode !== 'signup' && (
-            <button className="link" onClick={() => setMode('signup')}>
-              New here? Create an account
+            <button className="textbtn" onClick={() => setMode('signup')}>
+              I am new: create an account
             </button>
           )}
           {mode === 'signin' && (
-            <button className="link" onClick={() => setMode('reset')}>
-              Forgot password?
+            <button className="textbtn" onClick={() => setMode('reset')}>
+              I forgot my password
             </button>
           )}
         </div>
@@ -131,7 +131,7 @@ export function NewPasswordPage({ onDone }: { onDone: () => void }) {
             />
           </Field>
           <ErrorNote message={error} />
-          <button className="btn primary" disabled={busy}>
+          <button className="btn primary big" disabled={busy}>
             {busy ? 'Saving…' : 'Save password'}
           </button>
         </form>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Payment, Tenant } from '../lib/types'
 import type { Store } from '../lib/data'
+import { buildingWindows, monthSummary } from '../lib/rent'
 import {
   PAYMENT_METHODS,
   currentMonth,
@@ -9,17 +10,19 @@ import {
   formatMoney,
   linkTarget,
   monthLabel,
-  owesRentFor,
   shiftMonth,
   today,
   whatsappLink,
 } from '../lib/format'
 import { Empty, ErrorNote, Field, Sheet } from '../components/ui'
+import { BuildingView } from '../components/BuildingView'
 import { houseName } from './TenantsPage'
 
-type Filter = 'all' | 'unpaid' | 'paid'
+type Filter = 'unpaid' | 'paid' | 'all'
 
-export function RentPage({ store, goTo }: { store: Store; goTo: (tab: 'tenants') => void }) {
+const shortMonth = (m: string) => new Date(m + 'T00:00:00').toLocaleDateString('en-IN', { month: 'long' })
+
+export function RentPage({ store, goTo }: { store: Store; goTo: (tab: 'tenants' | 'buildings') => void }) {
   const [month, setMonth] = useState(currentMonth())
   const [payments, setPayments] = useState<Payment[]>([])
   const [filter, setFilter] = useState<Filter>('all')
@@ -38,26 +41,28 @@ export function RentPage({ store, goTo }: { store: Store; goTo: (tab: 'tenants')
   }, [load])
 
   const byTenant = useMemo(() => new Map(payments.map((p) => [p.tenant_id, p])), [payments])
+  const summary = useMemo(() => monthSummary(store.tenants, payments, month), [store.tenants, payments, month])
+  const windows = useMemo(
+    () => buildingWindows(store.buildings, store.units, store.tenants, payments, month),
+    [store.buildings, store.units, store.tenants, payments, month],
+  )
+  const unpaidCount = summary.due.length - summary.paidCount
+  const partCount = summary.due.filter((t) => {
+    const p = byTenant.get(t.id)
+    return p && Number(p.amount) < Number(t.rent_amount)
+  }).length
+  const progress = summary.expected > 0 ? Math.min(100, Math.round((summary.collected / summary.expected) * 100)) : 0
 
-  const unitName = (t: Tenant) => houseName(store, t.unit_id)
-
-  // Tenants who owe rent this month, based on their occupying and leaving dates.
-  const due = store.tenants.filter((t) => owesRentFor(t, month))
-  const paidCount = due.filter((t) => byTenant.has(t.id)).length
-  const expected = due.reduce((sum, t) => sum + Number(t.rent_amount), 0)
-  const collected = due.reduce((sum, t) => sum + Number(byTenant.get(t.id)?.amount ?? 0), 0)
-  const progress = expected > 0 ? Math.min(100, Math.round((collected / expected) * 100)) : 0
-
-  const rows = due.filter((t) => {
-    const paid = byTenant.has(t.id)
-    return filter === 'all' || (filter === 'paid' ? paid : !paid)
-  })
+  // Not paid first, then paid; each group in house order.
+  const rows = summary.due
+    .filter((t) => filter === 'all' || (filter === 'paid' ? byTenant.has(t.id) : !byTenant.has(t.id)))
+    .sort((a, b) => Number(byTenant.has(a.id)) - Number(byTenant.has(b.id)) || houseName(store, a.unit_id).localeCompare(houseName(store, b.unit_id), 'en', { numeric: true }))
 
   async function toggle(t: Tenant) {
     const existing = byTenant.get(t.id)
     setError(null)
     if (existing) {
-      if (!confirm(`Mark ${t.name} as unpaid for ${monthLabel(month)}?`)) return
+      if (!confirm(`${t.name} will be marked as NOT paid for ${monthLabel(month)}. Continue?`)) return
       setBusy(t.id)
       const { error } = await supabase.from('payments').delete().eq('id', existing.id)
       if (error) setError(error.message)
@@ -75,113 +80,136 @@ export function RentPage({ store, goTo }: { store: Store; goTo: (tab: 'tenants')
     setBusy(null)
   }
 
-  const isCurrent = month === currentMonth()
+  const answer =
+    summary.due.length === 0
+      ? 'No tenants owe rent for this month.'
+      : unpaidCount === 0 && partCount > 0
+        ? `Everyone has paid, but ${partCount} only part. ${formatMoney(summary.stillToCollect)} still to collect.`
+        : unpaidCount === 0
+          ? `Everyone has paid. ${formatMoney(summary.collected)} collected.`
+        : `${summary.paidCount} of ${summary.due.length} have paid${partCount ? ` (${partCount} only part paid)` : ''}. ${unpaidCount} still to pay.`
 
   return (
-    <section className="page">
-      <div className="month-bar">
-        <button className="icon-btn" onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Previous month">
-          ‹
+    <section className="page" aria-labelledby="rent-title">
+      <div className="month-switch">
+        <button className="btn prev" onClick={() => setMonth(shiftMonth(month, -1))}>
+          ‹ {shortMonth(shiftMonth(month, -1))}
         </button>
-        <div className="month-title">
-          <h1>{monthLabel(month)}</h1>
-          {!isCurrent && (
-            <button className="link small" onClick={() => setMonth(currentMonth())}>
-              Back to this month
-            </button>
-          )}
-        </div>
-        <button className="icon-btn" onClick={() => setMonth(shiftMonth(month, 1))} aria-label="Next month">
-          ›
+        <h1 id="rent-title">{monthLabel(month)}</h1>
+        <button className="btn next" onClick={() => setMonth(shiftMonth(month, 1))}>
+          {shortMonth(shiftMonth(month, 1))} ›
         </button>
       </div>
-
-      <div className="summary">
-        <div>
-          <span className="summary-label">Collected</span>
-          <strong className="summary-value">{formatMoney(collected)}</strong>
-          <span className="muted small">of {formatMoney(expected)}</span>
-        </div>
-        <div className="summary-right">
-          <span className="summary-label">Paid</span>
-          <strong className="summary-value">
-            {paidCount}/{due.length}
-          </strong>
-        </div>
-        <div className="progress" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
-          <div style={{ width: `${progress}%` }} />
-        </div>
-      </div>
-
-      <div className="segmented" role="tablist" aria-label="Filter tenants">
-        {(['all', 'unpaid', 'paid'] as Filter[]).map((f) => (
-          <button key={f} role="tab" aria-selected={filter === f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
-            {f === 'all' ? `All ${due.length}` : f === 'unpaid' ? `Unpaid ${due.length - paidCount}` : `Paid ${paidCount}`}
-          </button>
-        ))}
-      </div>
-
-      <ErrorNote message={error} />
+      {month !== currentMonth() && (
+        <button className="textbtn" onClick={() => setMonth(currentMonth())}>
+          Go back to this month
+        </button>
+      )}
 
       {store.tenants.length === 0 ? (
         <Empty title="No tenants yet">
-          <p>Add your apartment, its houses and your tenants, then tick them off here each month.</p>
-          <button className="btn primary" onClick={() => goTo('tenants')}>
-            Add a tenant
+          <p>First add your apartment and its houses, then your tenants. Then you can tick them off here each month.</p>
+          <button className="btn primary big" onClick={() => goTo(store.units.length ? 'tenants' : 'buildings')}>
+            {store.units.length ? 'Add a tenant' : 'Add your apartment'}
           </button>
         </Empty>
-      ) : rows.length === 0 ? (
-        <Empty title={filter === 'unpaid' ? 'Everyone has paid 🎉' : 'Nothing to show'} />
       ) : (
-        <ul className="list">
-          {rows.map((t) => {
-            const p = byTenant.get(t.id)
-            const partial = p && Number(p.amount) < Number(t.rent_amount)
-            return (
-              <li key={t.id} className={p ? 'rent-row paid' : 'rent-row'}>
-                <button
-                  className="check"
-                  role="checkbox"
-                  aria-checked={Boolean(p)}
-                  aria-label={`${t.name} paid`}
-                  disabled={busy === t.id}
-                  onClick={() => toggle(t)}
-                >
-                  {p ? '✓' : ''}
-                </button>
-                <button className="rent-main" onClick={() => setEditing({ tenant: t, payment: p })}>
-                  <span className="rent-name">{t.name}</span>
-                  <span className="muted small">{unitName(t)}</span>
-                  <span className="small">
-                    {p ? (
-                      <span className={partial ? 'tag warn' : 'tag ok'}>
-                        {partial ? 'Part paid' : 'Paid'} {formatMoney(p.amount)} · {p.method ?? '—'} · {dateLabel(p.paid_on)}
-                      </span>
-                    ) : (
-                      <span className="tag due">
-                        Due {formatMoney(t.rent_amount)}
-                        {t.rent_due_day ? ` by the ${ordinal(t.rent_due_day)}` : ''}
-                      </span>
-                    )}
-                  </span>
-                </button>
-                {!p && t.phone && (
-                  <a
-                    className="remind"
-                    href={whatsappLink(
-                      t.phone,
-                      `Hi ${t.name}, a friendly reminder that rent of ${formatMoney(t.rent_amount)} for ${monthLabel(month)} is due. Thank you!`,
-                    )}
-                    target={linkTarget}
-                    rel="noreferrer"
-                  >
-                    Remind
-                  </a>
-                )}
-              </li>
-            )
-          })}
-        </ul>
+        <>
+          <div className="panel answer">
+            <p className="answer-line">{answer}</p>
+            <div className="answer-figures">
+              <div className="figure data">
+                <span className="label">Collected</span>
+                <strong>{formatMoney(summary.collected)}</strong>
+              </div>
+              <div className="figure">
+                <span className="label">Still to collect</span>
+                <strong>{formatMoney(summary.stillToCollect)}</strong>
+              </div>
+            </div>
+            <div className="meter" role="progressbar" aria-label="Rent collected" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+              <div style={{ width: `${progress}%` }} />
+            </div>
+            <p className="label">
+              {formatMoney(summary.collected)} of {formatMoney(summary.expected)} expected this month
+            </p>
+          </div>
+
+          {windows.some((w) => w.windows.length > 0) && (
+            <BuildingView
+              data={windows}
+              label={`Your apartment${windows.length > 1 ? 's' : ''}: ${summary.paidCount} houses paid, ${unpaidCount} not paid.`}
+            />
+          )}
+
+          <h2>Tenants this month</h2>
+          <div className="filter" role="group" aria-label="Show">
+            {(['all', 'unpaid', 'paid'] as Filter[]).map((f) => (
+              <button key={f} aria-pressed={filter === f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
+                {f === 'all' ? `All (${summary.due.length})` : f === 'unpaid' ? `Not paid (${unpaidCount})` : `Paid (${summary.paidCount})`}
+              </button>
+            ))}
+          </div>
+
+          <ErrorNote message={error} />
+
+          {rows.length === 0 ? (
+            <Empty title={filter === 'unpaid' ? 'Everyone has paid this month' : 'No one to show here'} />
+          ) : (
+            <ul className="register">
+              {rows.map((t) => {
+                const p = byTenant.get(t.id)
+                const partial = p && Number(p.amount) < Number(t.rent_amount)
+                return (
+                  <li key={t.id} className={p ? 'reg-row paid' : 'reg-row'}>
+                    <button className="reg-who" onClick={() => setEditing({ tenant: t, payment: p })}>
+                      <span className="name">{t.name}</span>
+                      <span className="where">{houseName(store, t.unit_id)}</span>
+                    </button>
+                    <span className="reg-amount">{formatMoney(t.rent_amount)}</span>
+                    <div className="status">
+                      {p ? (
+                        <span className={partial ? 'tag part' : 'tag ok'}>
+                          {partial ? `Part paid: ${formatMoney(p.amount)}` : 'Paid'} on {dateLabel(p.paid_on)}
+                          {p.method ? ` · ${p.method}` : ''}
+                        </span>
+                      ) : (
+                        <span className="tag due">Not paid{t.rent_due_day ? ` · due on the ${ordinal(t.rent_due_day)}` : ''}</span>
+                      )}
+                    </div>
+                    <div className="reg-actions">
+                      <button
+                        className={p ? 'btn paid-toggle is-paid' : 'btn primary paid-toggle'}
+                        disabled={busy === t.id}
+                        aria-pressed={Boolean(p)}
+                        onClick={() => toggle(t)}
+                      >
+                        {busy === t.id ? 'Saving…' : p ? 'Paid. Press to undo' : 'Mark as paid'}
+                      </button>
+                      {!p && t.phone ? (
+                        <a
+                          className="btn"
+                          href={whatsappLink(
+                            t.phone,
+                            `Hi ${t.name}, a friendly reminder that rent of ${formatMoney(t.rent_amount)} for ${monthLabel(month)} is due. Thank you!`,
+                          )}
+                          target={linkTarget}
+                          rel="noreferrer"
+                        >
+                          Remind on WhatsApp
+                        </a>
+                      ) : (
+                        <button className="btn" onClick={() => setEditing({ tenant: t, payment: p })}>
+                          {p ? 'Change amount or date' : 'Enter amount and date'}
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </>
       )}
 
       {editing && (
@@ -238,7 +266,7 @@ function PaymentSheet({
   }
 
   async function remove() {
-    if (!payment || !confirm('Remove this payment?')) return
+    if (!payment || !confirm(`${tenant.name} will be marked as NOT paid for ${monthLabel(month)}. Continue?`)) return
     setBusy(true)
     const { error } = await supabase.from('payments').delete().eq('id', payment.id)
     setBusy(false)
@@ -248,40 +276,42 @@ function PaymentSheet({
 
   return (
     <Sheet
-      title={`${tenant.name} · ${monthLabel(month)}`}
+      title={`${tenant.name}: ${monthLabel(month)}`}
       onClose={onClose}
       footer={
         <>
           {payment && (
             <button className="btn danger" onClick={remove} disabled={busy}>
-              Mark unpaid
+              Mark as not paid
             </button>
           )}
           <button className="btn primary" onClick={save} disabled={busy}>
-            {payment ? 'Save' : 'Mark as paid'}
+            {busy ? 'Saving…' : payment ? 'Save' : 'Save as paid'}
           </button>
         </>
       }
     >
+      <p className="label" style={{ marginBottom: '1.25rem' }}>
+        Monthly rent: <strong className="num">{formatMoney(tenant.rent_amount)}</strong>
+      </p>
       <div className="grid">
         <Field label="Amount paid (₹)">
           <input inputMode="decimal" type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </Field>
-        <Field label="Paid on">
+        <Field label="Date paid">
           <input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
         </Field>
-        <Field label="Method" wide>
+        <Field label="Paid by" wide>
           <select value={method} onChange={(e) => setMethod(e.target.value)}>
             {PAYMENT_METHODS.map((m) => (
               <option key={m}>{m}</option>
             ))}
           </select>
         </Field>
-        <Field label="Note" wide>
-          <input value={note} placeholder="e.g. UPI ref, balance next week" onChange={(e) => setNote(e.target.value)} />
+        <Field label="Note (optional)" wide>
+          <input value={note} placeholder="For example: UPI number, balance next week" onChange={(e) => setNote(e.target.value)} />
         </Field>
       </div>
-      <p className="muted small">Monthly rent: {formatMoney(tenant.rent_amount)}</p>
       <ErrorNote message={error} />
     </Sheet>
   )
