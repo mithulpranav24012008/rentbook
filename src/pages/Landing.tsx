@@ -96,7 +96,7 @@ export function Landing({ onOpenApp }: { onOpenApp: () => void }) {
               width={1600}
               height={1067}
             />
-            <figcaption>An apartment block in Hyderabad</figcaption>
+            <figcaption>RentBook</figcaption>
           </figure>
         </section>
 
