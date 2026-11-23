@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Payment, Tenant } from '../lib/types'
 import type { Store } from '../lib/data'
-import { buildingWindows, monthSummary } from '../lib/rent'
+import { monthSummary } from '../lib/rent'
 import {
   PAYMENT_METHODS,
   currentMonth,
@@ -15,7 +15,6 @@ import {
   whatsappLink,
 } from '../lib/format'
 import { Empty, ErrorNote, Field, Sheet } from '../components/ui'
-import { BuildingView } from '../components/BuildingView'
 import { houseName } from './TenantsPage'
 
 type Filter = 'unpaid' | 'paid' | 'all'
@@ -42,10 +41,6 @@ export function RentPage({ store, goTo }: { store: Store; goTo: (tab: 'tenants' 
 
   const byTenant = useMemo(() => new Map(payments.map((p) => [p.tenant_id, p])), [payments])
   const summary = useMemo(() => monthSummary(store.tenants, payments, month), [store.tenants, payments, month])
-  const windows = useMemo(
-    () => buildingWindows(store.buildings, store.units, store.tenants, payments, month),
-    [store.buildings, store.units, store.tenants, payments, month],
-  )
   const unpaidCount = summary.due.length - summary.paidCount
   const partCount = summary.due.filter((t) => {
     const p = byTenant.get(t.id)
@@ -134,13 +129,6 @@ export function RentPage({ store, goTo }: { store: Store; goTo: (tab: 'tenants' 
               {formatMoney(summary.collected)} of {formatMoney(summary.expected)} expected this month
             </p>
           </div>
-
-          {windows.some((w) => w.windows.length > 0) && (
-            <BuildingView
-              data={windows}
-              label={`Your apartment${windows.length > 1 ? 's' : ''}: ${summary.paidCount} houses paid, ${unpaidCount} not paid.`}
-            />
-          )}
 
           <h2>Tenants this month</h2>
           <div className="filter" role="group" aria-label="Show">

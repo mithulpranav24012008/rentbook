@@ -1,25 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { BuildingView } from '../components/BuildingView'
-import type { BuildingWindows, WindowState } from '../lib/rent'
-import { columnsFor } from '../lib/rent'
-
 const APK_URL =
   (import.meta.env.VITE_APK_URL as string | undefined) ||
   'https://github.com/mithulpranav24012008/rentbook/releases/download/latest-apk/RentBook.apk'
-
-// An example block for the first screen: six houses, four paid, one not paid, one empty.
-const exampleStates: WindowState[] = ['paid', 'paid', 'due', 'paid', 'vacant', 'paid']
-const example: BuildingWindows[] = [
-  {
-    building: { id: 'example', name: 'Example apartment', address: null, electrician_phone: null, eb_lineman_phone: null, notes: null },
-    windows: exampleStates.map((state, i) => ({
-      state,
-      unit: { id: `ex${i}`, building_id: 'example', label: String(i + 1), unit_type: null, floor: null, eb_number: null, key_number: null, rent_amount: null, deposit: null, notes: null },
-    })),
-    columns: columnsFor(6),
-    floors: 3,
-  },
-]
 
 const keeps = [
   {
@@ -92,8 +74,8 @@ export function Landing({ onOpenApp }: { onOpenApp: () => void }) {
           <div className="hero-copy">
             <h1 data-reveal>Who has paid rent this month?</h1>
             <p className="lead" data-reveal>
-              RentBook is a simple rent register for landlords. Every house is a window, and it lights up when the rent is
-              paid.
+              RentBook is a simple rent register for landlords. Tick off each tenant as they pay, and see at once who still
+              owes rent.
             </p>
             <div className="hero-actions" data-reveal>
               <a className="btn primary big" href={APK_URL} download>
@@ -107,25 +89,16 @@ export function Landing({ onOpenApp }: { onOpenApp: () => void }) {
               Free. For Android 7 or newer. Your records stay private to your account.
             </p>
           </div>
-          <div className="hero-figure" data-reveal>
-            <BuildingView
-              data={example}
-              lightUp
-              label="An example apartment with six houses: four paid, one not paid, one empty."
+          <figure className="hero-photo" data-reveal>
+            <img
+              src="/images/apartment-hyderabad.jpg"
+              alt="A white apartment block with balconies in Hyderabad"
+              width={1600}
+              height={1067}
             />
-          </div>
+            <figcaption>An apartment block in Hyderabad</figcaption>
+          </figure>
         </section>
-
-        <figure className="photo-band" data-reveal-group>
-          <img
-            data-reveal
-            src="/images/chennai-rooftops-mylapore.jpg"
-            alt="Rooftops and water tanks of houses in Mylapore, Chennai"
-            width={1600}
-            height={1067}
-          />
-          <figcaption>Mylapore, Chennai</figcaption>
-        </figure>
 
         <section className="band" aria-labelledby="keeps">
           <div className="band-head" data-reveal-group>
@@ -173,7 +146,7 @@ export function Landing({ onOpenApp }: { onOpenApp: () => void }) {
         <span className="brand">RentBook</span>
         <p className="label">A rent register for landlords. Your data is private to your account.</p>
         <p className="credits">
-          Pictures: <a href="https://www.flickr.com/photos/44345361@N06/8208181080">“Patterns Of Mylapore”</a> and{' '}
+          Pictures: <a href="https://www.pexels.com/photo/white-concrete-building-7672060/">Photo by Sharath G. on Pexels</a>;{' '}
           <a href="https://www.flickr.com/photos/44345361@N06/4268053363">“Pattern”</a> by VinothChandar,{' '}
           <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>, via Flickr;{' '}
           <a href="https://commons.wikimedia.org/w/index.php?curid=29077337">“Electricity meters in India”</a> by Balaji
