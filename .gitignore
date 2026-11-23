@@ -31,3 +31,5 @@ android/
 *.apk
 *.jks
 *.keystore
+.vercel
+.env*

@@ -4,14 +4,20 @@ import { isConfigured, supabase } from './lib/supabase'
 import { isNative } from './lib/format'
 import { useData } from './lib/data'
 import { Landing } from './pages/Landing'
-import { AuthPage } from './pages/AuthPage'
+import { AuthPage, NewPasswordPage } from './pages/AuthPage'
 import { RentPage } from './pages/RentPage'
 import { TenantsPage } from './pages/TenantsPage'
 import { BuildingsPage } from './pages/BuildingsPage'
 import { ErrorNote } from './components/ui'
 
 export default function App() {
-  const [path, setPath] = useState(window.location.pathname)
+  const [path, setPath] = useState(() => {
+    // Email links that land on "/" (e.g. older Supabase settings) should still open the app and sign in.
+    if (!isNative && !window.location.pathname.startsWith('/app') && /access_token=|[?&]code=|error_description=/.test(window.location.href)) {
+      window.history.replaceState(null, '', '/app' + window.location.search + window.location.hash)
+    }
+    return window.location.pathname
+  })
 
   useEffect(() => {
     const onPop = () => setPath(window.location.pathname)
@@ -36,11 +42,15 @@ export default function App() {
 
 function AppShell() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
+  const [recovering, setRecovering] = useState(false)
 
   useEffect(() => {
     if (!isConfigured) return
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
+    const { data } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s)
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true)
+    })
     return () => data.subscription.unsubscribe()
   }, [])
 
@@ -59,6 +69,7 @@ function AppShell() {
   }
   if (session === undefined) return <div className="loading">Loading…</div>
   if (!session) return <AuthPage />
+  if (recovering) return <NewPasswordPage onDone={() => setRecovering(false)} />
   // key resets all loaded data when a different user signs in.
   return <Main key={session.user.id} email={session.user.email ?? ''} />
 }

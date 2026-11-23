@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { supabase } from '../lib/supabase'
+import { AUTH_REDIRECT, supabase } from '../lib/supabase'
 import { ErrorNote, Field } from '../components/ui'
 
 type Mode = 'signin' | 'signup' | 'reset'
@@ -21,11 +21,11 @@ export function AuthPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setError(error.message)
     } else if (mode === 'signup') {
-      const { data, error } = await supabase.auth.signUp({ email, password })
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: AUTH_REDIRECT } })
       if (error) setError(error.message)
       else if (!data.session) setInfo('Account created. Check your email for a confirmation link, then sign in.')
     } else {
-      const { error } = await supabase.auth.resetPasswordForEmail(email)
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: AUTH_REDIRECT })
       if (error) setError(error.message)
       else setInfo('If that email has an account, a password reset link is on its way.')
     }
@@ -88,6 +88,53 @@ export function AuthPage() {
             </button>
           )}
         </div>
+      </div>
+    </main>
+  )
+}
+
+/** Shown after opening a password reset link: the user is signed in and picks a new password. */
+export function NewPasswordPage({ onDone }: { onDone: () => void }) {
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    const { error } = await supabase.auth.updateUser({ password })
+    setBusy(false)
+    if (error) setError(error.message)
+    else onDone()
+  }
+
+  return (
+    <main className="auth">
+      <div className="auth-card">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            ₹
+          </span>
+          RentBook
+        </div>
+        <h1>Set a new password</h1>
+        <form onSubmit={submit} className="stack">
+          <Field label="New password">
+            <input
+              type="password"
+              autoComplete="new-password"
+              minLength={6}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </Field>
+          <ErrorNote message={error} />
+          <button className="btn primary" disabled={busy}>
+            {busy ? 'Saving…' : 'Save password'}
+          </button>
+        </form>
       </div>
     </main>
   )

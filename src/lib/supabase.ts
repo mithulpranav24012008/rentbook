@@ -10,3 +10,7 @@ export const isConfigured = Boolean(url && anonKey)
 export const supabase = createClient(url || 'http://localhost:54321', anonKey || 'not-configured', {
   auth: { persistSession: true, autoRefreshToken: true },
 })
+
+/** Where email links (sign-up confirmation, password reset) should land. */
+export const SITE_URL = ((import.meta.env.VITE_SITE_URL as string | undefined) || 'https://rentbook-one.vercel.app').replace(/\/$/, '')
+export const AUTH_REDIRECT = `${SITE_URL}/app`
