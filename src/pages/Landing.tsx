@@ -46,10 +46,10 @@ export function Landing({ onOpenApp }: { onOpenApp: () => void }) {
             </div>
             <ul className="preview-list">
               <li className="paid">
-                <span className="check">✓</span>Ravi Kumar <span className="muted">Flat 1A</span>
+                <span className="check">✓</span>Ravi Kumar <span className="muted">House 1A</span>
               </li>
               <li className="paid">
-                <span className="check">✓</span>Priya S. <span className="muted">Flat 2B</span>
+                <span className="check">✓</span>Priya S. <span className="muted">House 2B</span>
               </li>
               <li>
                 <span className="check" />
@@ -66,11 +66,11 @@ export function Landing({ onOpenApp }: { onOpenApp: () => void }) {
           </div>
           <div>
             <h2>Tenant records</h2>
-            <p>Phone, ID proof, deposit, move-in date, emergency contact and payment history.</p>
+            <p>Aadhaar and address, rent, advance, occupying and leaving dates, and every rent paid date.</p>
           </div>
           <div>
-            <h2>Buildings and flats</h2>
-            <p>Every building with its flats, rooms or shops, which are occupied and which are vacant.</p>
+            <h2>Apartments and houses</h2>
+            <p>House numbers, EB bill and key numbers, and your electrician and EB line man on one tap.</p>
           </div>
           <div>
             <h2>WhatsApp reminders</h2>

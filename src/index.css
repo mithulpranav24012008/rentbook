@@ -266,3 +266,16 @@ button { cursor: pointer; }
   .landing-main { grid-template-columns: 1.3fr 1fr; align-items: center; }
   .features, .install { grid-column: 1 / -1; }
 }
+
+/* Apartment facts and contacts */
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; padding: 12px; border-radius: 12px; background: var(--surface-2); }
+.facts div { min-width: 0; }
+.facts dt { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+.facts dd { margin: 2px 0 0; font-weight: 650; overflow-wrap: anywhere; }
+.contacts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.contact {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; font-weight: 650;
+}
+a.contact:hover { background: var(--surface-2); }
+.empty-contact { border-style: dashed; font-weight: 400; }

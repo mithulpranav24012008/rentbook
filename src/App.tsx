@@ -120,7 +120,7 @@ function TabButtons({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   const items: { id: Tab; label: string; icon: string }[] = [
     { id: 'rent', label: 'Rent', icon: '✓' },
     { id: 'tenants', label: 'Tenants', icon: '☺' },
-    { id: 'buildings', label: 'Buildings', icon: '⌂' },
+    { id: 'buildings', label: 'Apartments', icon: '⌂' },
   ]
   return (
     <>

@@ -7,8 +7,10 @@
 create table if not exists public.buildings (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  name text not null,
+  name text not null,              -- apartment name
   address text,
+  electrician_phone text,
+  eb_lineman_phone text,
   notes text,
   created_at timestamptz not null default now()
 );
@@ -17,9 +19,11 @@ create table if not exists public.units (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   building_id uuid not null references public.buildings (id) on delete cascade,
-  label text not null,            -- e.g. "Flat 2B", "Ground floor"
+  label text not null,            -- house number, e.g. "2B"
   unit_type text,                 -- e.g. "2 BHK", "Shop", "Room"
   floor text,
+  eb_number text,                 -- EB (electricity) bill / service number
+  key_number text,                -- house key number
   rent_amount numeric(12, 2),
   deposit numeric(12, 2),
   notes text,
@@ -32,16 +36,15 @@ create table if not exists public.tenants (
   unit_id uuid references public.units (id) on delete set null,
   name text not null,
   phone text,
-  email text,
-  id_proof_type text,
-  id_proof_number text,
-  move_in_date date,
+  aadhaar_number text,
+  permanent_address text,
+  move_in_date date,              -- occupying date
+  move_out_date date,             -- leaving date
   rent_amount numeric(12, 2) not null default 0,
-  deposit numeric(12, 2),
-  rent_due_day int check (rent_due_day between 1 and 31),
+  deposit numeric(12, 2),         -- advance
+  rent_due_day int check (rent_due_day between 1 and 31),  -- monthly rent date
   emergency_contact text,
   notes text,
-  active boolean not null default true,
   created_at timestamptz not null default now()
 );
 
@@ -57,6 +60,15 @@ create table if not exists public.payments (
   created_at timestamptz not null default now(),
   unique (tenant_id, month)
 );
+
+-- If you ran an older version of this file, these add the newer columns.
+alter table public.buildings add column if not exists electrician_phone text;
+alter table public.buildings add column if not exists eb_lineman_phone text;
+alter table public.units add column if not exists eb_number text;
+alter table public.units add column if not exists key_number text;
+alter table public.tenants add column if not exists aadhaar_number text;
+alter table public.tenants add column if not exists permanent_address text;
+alter table public.tenants add column if not exists move_out_date date;
 
 create index if not exists buildings_user_idx on public.buildings (user_id);
 create index if not exists units_user_idx on public.units (user_id);

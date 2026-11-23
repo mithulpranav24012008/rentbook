@@ -49,3 +49,15 @@ export const whatsappLink = (phone: string, text: string) => {
 export const linkTarget = isNative ? undefined : '_blank'
 
 export const PAYMENT_METHODS = ['Cash', 'UPI', 'Bank transfer', 'Cheque', 'Other']
+
+type Dated = { move_in_date: string | null; move_out_date: string | null }
+
+/** Still living there today (no leaving date, or it is in the future). */
+export const isCurrent = (t: Dated) => !t.move_out_date || t.move_out_date >= today()
+
+/** Owes rent for this month: moved in by the month's end and not left before it started. */
+export const owesRentFor = (t: Dated, month: string) =>
+  (!t.move_in_date || t.move_in_date <= monthEnd(month)) && (!t.move_out_date || t.move_out_date >= month)
+
+/** Aadhaar shown as 1234 5678 9012. */
+export const formatAadhaar = (v: string | null) => (v ? v.replace(/\D/g, '').replace(/(\d{4})(?=\d)/g, '$1 ') : '')

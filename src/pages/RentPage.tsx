@@ -8,13 +8,14 @@ import {
   dateLabel,
   formatMoney,
   linkTarget,
-  monthEnd,
   monthLabel,
+  owesRentFor,
   shiftMonth,
   today,
   whatsappLink,
 } from '../lib/format'
 import { Empty, ErrorNote, Field, Sheet } from '../components/ui'
+import { houseName } from './TenantsPage'
 
 type Filter = 'all' | 'unpaid' | 'paid'
 
@@ -38,15 +39,10 @@ export function RentPage({ store, goTo }: { store: Store; goTo: (tab: 'tenants')
 
   const byTenant = useMemo(() => new Map(payments.map((p) => [p.tenant_id, p])), [payments])
 
-  const unitName = (t: Tenant) => {
-    const unit = store.units.find((u) => u.id === t.unit_id)
-    if (!unit) return 'No unit assigned'
-    const building = store.buildings.find((b) => b.id === unit.building_id)
-    return building ? `${unit.label} · ${building.name}` : unit.label
-  }
+  const unitName = (t: Tenant) => houseName(store, t.unit_id)
 
-  // Tenants who owe rent this month: active, and moved in on or before the month.
-  const due = store.tenants.filter((t) => t.active && (!t.move_in_date || t.move_in_date <= monthEnd(month)))
+  // Tenants who owe rent this month, based on their occupying and leaving dates.
+  const due = store.tenants.filter((t) => owesRentFor(t, month))
   const paidCount = due.filter((t) => byTenant.has(t.id)).length
   const expected = due.reduce((sum, t) => sum + Number(t.rent_amount), 0)
   const collected = due.reduce((sum, t) => sum + Number(byTenant.get(t.id)?.amount ?? 0), 0)
@@ -129,7 +125,7 @@ export function RentPage({ store, goTo }: { store: Store; goTo: (tab: 'tenants')
 
       {store.tenants.length === 0 ? (
         <Empty title="No tenants yet">
-          <p>Add a building and your tenants, then tick them off here each month.</p>
+          <p>Add your apartment, its houses and your tenants, then tick them off here each month.</p>
           <button className="btn primary" onClick={() => goTo('tenants')}>
             Add a tenant
           </button>
