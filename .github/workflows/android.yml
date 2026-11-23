@@ -1,0 +1,72 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - name: Build web app
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Create Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Set version code from run number
+        run: |
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+
+      - name: Build and sign APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          cd android
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            ./gradlew assembleRelease --no-daemon
+            echo "$KEYSTORE_BASE64" | base64 -d > release.jks
+            BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+            "$BT/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
+            "$BT/apksigner" sign --ks release.jks --ks-pass env:KEYSTORE_PASSWORD --ks-key-alias rentbook \
+              --out ../RentBook.apk aligned.apk
+            rm release.jks
+          else
+            echo "::warning::No signing key secrets set, building a debug APK instead."
+            ./gradlew assembleDebug --no-daemon
+            cp app/build/outputs/apk/debug/app-debug.apk ../RentBook.apk
+          fi
+
+      - name: Publish to the "latest-apk" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view latest-apk >/dev/null 2>&1 || \
+            gh release create latest-apk --title "RentBook Android app" \
+              --notes "The latest Android build of RentBook. It is rebuilt on every push to main."
+          gh release upload latest-apk RentBook.apk --clobber
